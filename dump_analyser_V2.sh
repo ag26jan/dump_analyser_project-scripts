@@ -62,9 +62,27 @@ if [ -z "$executable_path" ]; then
 fi
 
 #Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
+
 executable_binary=$(basename "$executable_path")
 
+# Extract the OS architecture information
+
+os_architecture=$(file "$file_name" | awk -F"platform: '" '{print $2}' | awk -F"'" '{print $1}')
+
+case "$os_architecture" in
+    aarch64)
+        echo "Executable Version: yugabyte-$executable_version-el8-$os_architecture"
+        ;;
+    x86_64)
+        echo "Executable Version: yugabyte-$executable_version-linux-$os_architecture"
+        ;;
+    *)
+        echo "Executable Version: $executable_version"
+        ;;
+esac
+
 #The full YB DB version by which the core file created 
+
 executable_version=$(echo "$executable_path" | awk -F "/home/yugabyte/yb-software/" '{print $2}' | sed 's/-centos-/-linux-/' | awk -F "/" '{print $1}')
 
 error_exit() {
@@ -89,25 +107,12 @@ if [ -z "$executable_version" ]; then
     done
 fi
 
-# Extract the OS architecture information
-os_architecture=$(file "$file_name" | awk -F"platform: '" '{print $2}' | awk -F"'" '{print $1}')
-
-case "$os_architecture" in
-    aarch64)
-        echo "Executable Version: yugabyte-$executable_version-el8-$os_architecture"
-        ;;
-    x86_64)
-        echo "Executable Version: yugabyte-$executable_version-linux-$os_architecture"
-        ;;
-    *)
-        echo "Executable Version: $executable_version"
-        ;;
-esac
 
 # Extract numeric Yugabyte DB version from the extracted version string above
+
 numeric_version=$(echo "$executable_version" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
 
 # Extarct the downloadable tar file URL for the YB-DB executables
-yb_db_tar_file="https://downloads.yugabyte.com/releases/$numeric_version/$executable_version.tar.gz"
+yb_db_tar_file="https://downloads.yugabyte.com/releases/$numeric_version/yugabyte-$executable_version-linux-$os_architecture.tar.gz"
 
 echo "Downloadable Tar File URL: $yb_db_tar_file"
