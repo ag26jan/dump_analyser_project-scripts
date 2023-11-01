@@ -67,12 +67,12 @@ yb_executable_process=$(basename "$yb_executable_path")
 
 # Extract the OS architecture information. Print the OS architecture.
 
-if echo "$yb_executable_path" | grep -q -E 'aarch64|x86_64'; then
-    os_architecture=$(echo "$yb_executable_path" | grep -o -E 'aarch64|x86_64')
-else
-    os_architecture=$(echo "$yb_executable_path" | awk -F "/" '{print $(NF-1)}' | awk -F "-" '{print $NF}')
-fi
+os_architecture=$(file "$file_name" | awk -F"platform: '" '{print $2}' | awk -F"'" '{print $1}')
 
+# If the file-based method doesn't work, use the yb_executable_path.
+if [ -z "$os_architecture" ]; then
+    os_architecture=$(echo "$yb_executable_path" | awk -F "-$yb_db_numeric_version" '{print $2}' | awk -F "/" '{print $1}')
+fi
 
 echo "OS architecture is: $os_architecture"
 
