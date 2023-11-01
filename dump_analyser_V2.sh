@@ -33,11 +33,17 @@ else
   file_name=$1
 fi
 
+# Separator
+echo "--------------------------------------------------------"
+
 # Check if the Core file exists
 
 if [ ! -f "$file_name" ]; then
   error_exit "Error: The file '$file_name' does not exist."
 fi
+
+# Separator
+echo "--------------------------------------------------------"
 
 # Check if the Core file is a valid core dump
 
@@ -61,6 +67,8 @@ if [ -z "$yb_executable_path" ]; then
     fi
 fi
 
+# Separator
+echo "--------------------------------------------------------"
 
 #Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
@@ -86,6 +94,8 @@ fi
 echo "OS architecture is: $os_architecture"
 
 
+# Separator
+echo "--------------------------------------------------------"
 
 # Extract numeric Yugabyte DB version from the extracted version string above.
 
@@ -118,10 +128,17 @@ fi
 # Extract numeric Yugabyte DB version for URL
 yb_db_numeric_version_without_build=$(echo "$yb_db_numeric_version" | sed 's/-b[0-9]\+$//')
 
+# Separator
+echo "--------------------------------------------------------"
+
 # Construct yb_db_tar_url. 
 yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version_without_build/$yb_db_tar_file"
 
 echo "Downloadable Tar File URL: $yb_db_tar_url"
+
+
+# Separator
+echo "--------------------------------------------------------"
 
 # Download the yb db binary tar file
 
