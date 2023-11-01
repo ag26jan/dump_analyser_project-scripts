@@ -139,18 +139,23 @@ if [ -f "$yb_db_install_dir/$yb_db_tar_file" ]; then
   echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
 else
   echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
-# Check if the file exists on the internet
+
+  # Check if the file exists on the internet
   response_code=$(curl -L --head -w "%{http_code}" "$yb_db_tar_url" -o /dev/null)
 
   if [ "$response_code" -eq 200 ]; then
-# File exists, proceed with the download
-  curl -L -# "$yb_db_tar_url" -o "$yb_db_install_dir/$yb_db_tar_file"
-  if [ $? -eq 0 ]; then
-    echo "Download of YB version file succeeded."
+    # File exists, proceed with the download
+    curl -L -# "$yb_db_tar_url" -o "$yb_db_install_dir/$yb_db_tar_file"
+    if [ $? -eq 0 ]; then
+      echo "Download of YB version file succeeded."
+    else
+      error_exit "Error: Download of YB version file failed."
+    fi
   else
-    error_exit "Error: Download of YB version file failed."
+    error_exit "Error: The YB version file does not exist at $yb_db_tar_url."
   fi
 fi
+
 
 # Separator
 echo "--------------------------------------------------------"
