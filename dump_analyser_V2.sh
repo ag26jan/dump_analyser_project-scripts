@@ -181,7 +181,7 @@ else
 fi
 
 #To use the relative yb executable path in the lldb command, let's extrcat this. 
-yb_executable_relative_path=$(echo "$yb_executable_path" | sed -E 's|/home/yugabyte/yb-software/yugabyte-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+-[^/]+/||')
+yb_executable_relative_path=$(echo "$yb_executable_path" | sed -E 's|.*/yb-software/yugabyte-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+-[^/]+/||')
 
 # Use the lldb command with the new input string
 # Ask user to enetr available lldb command option for ease.
