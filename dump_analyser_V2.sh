@@ -87,10 +87,6 @@ fi
 
 echo "OS architecture is: $os_architecture"
 
-
-# Separator
-echo "--------------------------------------------------------"
-
 # Extract numeric Yugabyte DB version from the extracted version string above.
 
 yb_db_numeric_version=$(echo "$yb_executable_path" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+')
