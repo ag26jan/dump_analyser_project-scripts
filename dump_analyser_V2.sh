@@ -47,7 +47,7 @@ if echo "$file_type" | grep -q "core file"; then
 else
   error_exit "Error: The Core dump file is NOT an ELF core dump, please provide a valid core dump file. Make sure the file IS NOT compressed, if so please extract it and then try again!"
 fi
-blinkdots $!
+
 
 # Extract the yugabyte binary version information from the core dump file
 
@@ -60,7 +60,7 @@ if [ -z "$yb_executable_path" ]; then
         yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/bin/[^ ]*' | head -n 1)
     fi
 fi
-blinkdots $!
+
 
 #Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
@@ -122,4 +122,125 @@ yb_db_numeric_version_without_build=$(echo "$yb_db_numeric_version" | sed 's/-b[
 yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version_without_build/$yb_db_tar_file"
 
 echo "Downloadable Tar File URL: $yb_db_tar_url"
-blinkdots $!
+
+# Download the yb db binary tar file
+
+download_file="$yb_db_tar_file"
+yb_db_install_dir="/home/yugabyte/yb-software"
+
+if [ -f "$yb_db_install_dir/$yb_db_tar_file" ]; then
+  echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
+else
+  echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
+
+  curl -L -# "$yb_db_tar_url" -o "$yb_db_install_dir/$yb_db_tar_file"
+  if [ $? -eq 0 ]; then
+    echo "Download of YB version file succeeded."
+  else
+    error_exit "Error: Download of YB version file failed."
+  fi
+fi
+
+# Separator
+echo "--------------------------------------------------------"
+
+# Extract the yb binary tar file in the "/home/yugabyte/yb-software" dir in case file server
+yb_db_executable_dir="$yb_db_install_dir/yugabyte-$yb_db_numeric_version_without_build"
+
+if [ -d "$yb_db_executable_dir" ]; then
+  echo "$yb_db_executable_dir already exists, not extracting again."
+else
+  echo "Extracting $yb_db_tar_file in $yb_db_install_dir"
+  tar -xzf "$yb_db_tar_file" -C $yb_db_install_dir &>/dev/null &
+  blinkdots $!
+  if [ $? -eq 0 ]; then
+    echo "Extracting $yb_db_tar_file completed."
+  else
+    error_exit "Error: Failed to extract $yb_db_tar_file."
+  fi
+fi
+
+# Separator
+echo "--------------------------------------------------------"
+
+# Execute post install script. This will setup the yb-db executable files to work with core and other cluster related stuff.
+
+post_install="$yb_db_executable_dir/bin/post_install.sh"
+
+if [ -f "$post_install" ]; then
+  echo "Executing post_install script to setup the binary as per core dump. Please bear with me!"
+  $post_install &>/dev/null &
+  blinkdots $!
+  if [ $? -eq 0 ]; then
+    echo "Post-installation setup completed."
+  else
+    error_exit "Error: Failed to execute post_install script."
+  fi
+else
+  error_exit "Error: $post_install not found."
+fi
+
+#To use the relative yb executable path in the lldb command, let's extrcat this. 
+yb_executable_relative_path=$(echo "$yb_executable_path" | sed -E 's|/home/yugabyte/yb-software/yugabyte-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+-[^/]+/||')
+
+# Use the lldb command with the new input string
+# Ask user to enetr available lldb command option for ease.
+#The below section is to ask few more user inputs and redirection etc.
+
+# Separator
+echo "--------------------------------------------------------"
+
+echo "Select an option for lldb command and press ENTER:"
+echo "1. bt"
+echo "2. thread backtrace all"
+echo "3. Other lldb command"
+echo "4. Quit"
+read -r option
+
+while [[ ! "$option" =~ ^(1|2|3|4)$ ]]; do
+  echo "Error: Invalid option selected. Please select either 1, 2, 3 or 4."
+  echo "Select an option for lldb command and press ENTER:"
+  echo "1. bt"
+  echo "2. thread backtrace all"
+  echo "3. Other lldb command"
+  echo "4. Quit"
+  read -r option
+done
+
+# Separator
+echo "--------------------------------------------------------"
+
+
+if [ "$option" == "1" ]; then
+  lldb_command="bt"
+elif [ "$option" == "2" ]; then
+  lldb_command="thread backtrace all"
+elif [ "$option" == "3" ]; then
+  echo "Enter the lldb command:"
+  read -r lldb_command
+fi
+
+if [ "$option" != "4" ]; then
+  echo "Do you want to redirect the output to a file? (y/n)"
+  read -r redirect_output
+  while [[ ! "$redirect_output" =~ ^(y|n)$ ]]; do
+    echo "Error: Invalid option selected. Please enter either y or n."
+    echo "Do you want to redirect the output to a file? (y/n)"
+    read -r redirect_output
+  done
+
+# Separator
+echo "--------------------------------------------------------"
+
+
+if [ "$redirect_output" == "y" ]; then
+  output_file="${file_name}_$(echo "$lldb_command" | tr -s ' ' '_')_analysis.out"
+  echo "Output will be saved to $output_file"
+  lldb --one-line-before-file "settings append target.exec-search-paths $(find $yb_db_executable_dir -type d | xargs echo)" -f "$yb_db_executable_dir/$yb_executable_relative_path" -c "$file_name" -o "$lldb_command" -o "quit"> "$output_file"
+  echo "Analysis complete, the file '$output_file' has been saved."
+else
+  lldb --one-line-before-file "settings append target.exec-search-paths $(find $yb_db_executable_dir -type d | xargs echo)" -f "$yb_db_executable_dir/$yb_executable_relative_path" -c "$file_name" -o "$lldb_command"
+fi
+fi
+echo "Exiting."
+exit 0
