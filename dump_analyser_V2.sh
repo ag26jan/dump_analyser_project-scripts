@@ -71,6 +71,10 @@ os_architecture=$(file "$file_name" | awk -F"platform: '" '{print $2}' | awk -F"
 
 echo "OS architecture is: $os_architecture"
 
+# Extract numeric Yugabyte DB version from the extracted version string above
+
+yb_db_numeric_version=$(echo "$yb_executable_path" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
+
 #The full YB DB version by which the core file created 
 
 yb_db_tar_file=$(echo "$yb_executable_path" | awk -F "/home/yugabyte/yb-software/" '{print $2}' | sed 's/-centos-/-linux-/' | awk -F "/" '{print $1}' | awk '{print $0".tar.gz"}')
@@ -97,12 +101,7 @@ if [ -z "$yb_db_tar_file" ]; then
     done
 fi
 
-
-# Extract numeric Yugabyte DB version from the extracted version string above
-
-numeric_version=$(echo "$yb_db_tar_file" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+')
-
 # Extarct the downloadable tar file URL for the YB-DB executables
-yb_db_tar_url="https://downloads.yugabyte.com/releases/$numeric_version/$yb_db_tar_file"
+yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version/$yb_db_tar_file"
 
 echo "Downloadable Tar File URL: $yb_db_tar_url"
