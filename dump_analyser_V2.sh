@@ -73,15 +73,17 @@ if file "$file_name" | grep -q "x86_64"; then
     os_architecture="x86_64"
 elif file "$file_name" | grep -q "aarch64"; then
     os_architecture="aarch64"
-fi
-
-os_architecture_from_path=$(echo "$yb_executable_path" | awk -F "-$yb_db_numeric_version" '{print $2}' | awk -F "/" '{print $1}')
-
-if [ -n "$os_architecture_from_path" ]; then
-    os_architecture="$os_architecture_from_path"
+else
+    # Try to extract architecture from the path
+    os_architecture_from_path=$(echo "$yb_executable_path" | grep -oE '(x86_64|aarch64)')
+    
+    if [ -n "$os_architecture_from_path" ]; then
+        os_architecture="$os_architecture_from_path"
+    fi
 fi
 
 echo "OS architecture is: $os_architecture"
+
 
 
 # Extract numeric Yugabyte DB version from the extracted version string above.
