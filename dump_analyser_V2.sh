@@ -33,9 +33,6 @@ else
   file_name=$1
 fi
 
-# Separator
-echo "--------------------------------------------------------"
-
 # Check if the Core file exists
 
 if [ ! -f "$file_name" ]; then
@@ -66,9 +63,6 @@ if [ -z "$yb_executable_path" ]; then
         yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/bin/[^ ]*' | head -n 1)
     fi
 fi
-
-# Separator
-echo "--------------------------------------------------------"
 
 #Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
