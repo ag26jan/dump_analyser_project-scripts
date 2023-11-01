@@ -90,11 +90,6 @@ if [ -z "$yb_db_numeric_version" ]; then
                 if [[ ! $yb_db_numeric_version =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+$ ]]; then
                     echo "Error: Invalid version format. Please enter in the format <MAJOR.MINOR.PATCH.REVISION-BUILDNumber>, for example, 2.18.1.0-b84"
                 else
-                    if [ "$os_architecture" = "x86_64" ]; then
-                        yb_db_tar_file="yugabyte-$yb_db_numeric_version-linux-$os_architecture.tar.gz"
-                    else
-                        yb_db_tar_file="yugabyte-$yb_db_numeric_version-el8-$os_architecture.tar.gz"
-                    fi
                     break
                 fi
             done
