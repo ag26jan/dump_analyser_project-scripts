@@ -105,12 +105,11 @@ if [ -z "$yb_db_numeric_version" ]; then
     done
 fi
 
-# Extract the downloadable tar file URL for the YB-DB executables
-yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version/$yb_db_tar_file"
-
-
 #The full YB DB version by which the core file created 
 
 yb_db_tar_file=$(echo "$yb_executable_path" | awk -F "/home/yugabyte/yb-software/" '{print $2}' | sed 's/-centos-/-linux-/' | awk -F "/" '{print $1}' | awk '{print $0".tar.gz"}')
+
+# Extract the downloadable tar file URL for the YB-DB executables
+yb_db_tar_url="https://downloads.yugabyte.com/releases/$(echo "$yb_db_numeric_version" | sed 's/-b[0-9]\+$//')/$yb_db_tar_file"
 
 echo "Downloadable Tar File URL: $yb_db_tar_url"
