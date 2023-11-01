@@ -151,7 +151,7 @@ if [ -d "$yb_db_executable_dir" ]; then
   echo "$yb_db_executable_dir already exists, not extracting again."
 else
   echo "Extracting $yb_db_tar_file in $yb_db_install_dir"
-  tar -xzf "$yb_db_tar_file" -C $yb_db_install_dir &>/dev/null &
+  tar -xzf "$yb_db_install_dir/$yb_db_tar_file" -C $yb_db_install_dir &>/dev/null &
   blinkdots $!
   if [ $? -eq 0 ]; then
     echo "Extracting $yb_db_tar_file completed."
