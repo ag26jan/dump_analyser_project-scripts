@@ -80,35 +80,29 @@ error_exit() {
     exit 1
 }
 
-#The full YB DB version by which the core file created 
+#The full YB DB version by which the core file created. If yb_db_numeric_version is not provided, prompt the user.
 if [ -z "$yb_db_numeric_version" ]; then
-    echo "You beat me :). I am not able to find the YB-DB executable version."
     while true; do
-        read -p "Do you want to enter the executable version manually? (y/n): " answer
-        if [ "$answer" = "y" ]; then
-            while true; do
-                read -p "Please enter the executable version in the <MAJOR.MINOR.PATCH.REVISION-BUILDNumber> format, for example, 2.18.1.0-b84: " yb_db_numeric_version
-                if [[ ! $yb_db_numeric_version =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+$ ]]; then
-                    echo "Error: Invalid version format. Please enter in the format <MAJOR.MINOR.PATCH.REVISION-BUILDNumber>, for example, 2.18.1.0-b84"
-                else
-                    if [ "$os_architecture" = "x86_64" ]; then
-                        yb_db_tar_file="yugabyte-$yb_db_numeric_version-linux-$os_architecture.tar.gz"
-                    else
-                        yb_db_tar_file="yugabyte-$yb_db_numeric_version-el8-$os_architecture.tar.gz"
-                    fi
-                    break
-                fi
-            done
-            break
+        read -p "Please enter the executable version in the <MAJOR.MINOR.PATCH.REVISION-BUILDNumber> format, for example, 2.18.1.0-b84: " yb_db_numeric_version
+        if [[ ! $yb_db_numeric_version =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+$ ]]; then
+            echo "Error: Invalid version format. Please enter in the format <MAJOR.MINOR.PATCH.REVISION-BUILDNumber>, for example, 2.18.1.0-b84"
         else
-            error_exit "Error: Failed to extract Yugabyte binary version information."
+            break
         fi
     done
 fi
 
+# Construct yb_db_tar_file based on os_architecture
+if [ "$os_architecture" = "x86_64" ]; then
+    yb_db_tar_file="yugabyte-$yb_db_numeric_version-linux-$os_architecture.tar.gz"
+else
+    yb_db_tar_file="yugabyte-$yb_db_numeric_version-el8-$os_architecture.tar.gz"
+fi
 
+# Extract numeric Yugabyte DB version for URL
+yb_db_numeric_version_without_build=$(echo "$yb_db_numeric_version" | sed 's/-b[0-9]\+$//')
 
-# Extract the downloadable tar file URL for the YB-DB executables
-yb_db_tar_url="https://downloads.yugabyte.com/releases/$(echo "$yb_db_numeric_version" | sed 's/-b[0-9]\+$//')/$yb_db_tar_file"
+# Construct yb_db_tar_url. 
+yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version_without_build/$yb_db_tar_file"
 
 echo "Downloadable Tar File URL: $yb_db_tar_url"
