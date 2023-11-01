@@ -47,7 +47,7 @@ if echo "$file_type" | grep -q "core file"; then
 else
   error_exit "Error: The Core dump file is NOT an ELF core dump, please provide a valid core dump file. Make sure the file IS NOT compressed, if so please extract it and then try again!"
 fi
-
+blinkdots $!
 
 # Extract the yugabyte binary version information from the core dump file
 
@@ -60,6 +60,7 @@ if [ -z "$yb_executable_path" ]; then
         yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/bin/[^ ]*' | head -n 1)
     fi
 fi
+blinkdots $!
 
 #Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
@@ -121,3 +122,4 @@ yb_db_numeric_version_without_build=$(echo "$yb_db_numeric_version" | sed 's/-b[
 yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version_without_build/$yb_db_tar_file"
 
 echo "Downloadable Tar File URL: $yb_db_tar_url"
+blinkdots $!
