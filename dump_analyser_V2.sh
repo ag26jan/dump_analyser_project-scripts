@@ -1,20 +1,21 @@
 #!/bin/bash
 
-# Add a pretty welcome message
-echo "************************************************************"
-echo "*               Welcome to Core Dump Analyzer              *"
-echo "*             Please follow the prompts below             *"
-echo "*For any issue please user ##yb-support-tools Slack Channel*"
-echo "*Feel free to contribute: https://github.com/yugabyte/yb-tools/blob/main/dump_analyser.sh*"
-echo "************************************************************"
-echo
-
 # Display help section
 if [[ "$1" == "--help" || "$1" == "-h" ]]; then
-    echo "Usage: .//dump_analyser.sh <core_file>"
+    echo "Usage: ./dump_analyser.sh <core_file>"
+    echo "Example: ./dump_analyser.sh core.10896"
     echo "  -h, --help   Display this help message and exit"
     exit 0
 fi
+
+# Add a pretty welcome message
+echo "********************************************************************************************************************************"
+echo "*                                     Welcome to Core Dump Analyzer                                                            *"
+echo "*                         I am just a tiny tool to analyse the core file to help YB team                                       *"
+echo "*                           For any issue please use ##yb-support-tools Slack Channel                                          *"
+echo "*                         Feel free to contribute: https://github.com/yugabyte/yb-tools/                                       *"
+echo "********************************************************************************************************************************"
+echo
 
 
 #Function to show blinkdots for various steps in progress when needed in the script.
