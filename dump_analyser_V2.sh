@@ -1,5 +1,22 @@
 #!/bin/bash
 
+# Add a pretty welcome message
+echo "************************************************************"
+echo "*               Welcome to Core Dump Analyzer              *"
+echo "*             Please follow the prompts below             *"
+echo "*For any issue please user ##yb-support-tools Slack Channel*"
+echo "*Feel free to contribute: https://github.com/yugabyte/yb-tools/blob/main/dump_analyser.sh*"
+echo "************************************************************"
+echo
+
+# Display help section
+if [[ "$1" == "--help" || "$1" == "-h" ]]; then
+    echo "Usage: .//dump_analyser.sh <core_file>"
+    echo "  -h, --help   Display this help message and exit"
+    exit 0
+fi
+
+
 #Function to show blinkdots for various steps in progress when needed in the script.
 
 function blinkdots() {
@@ -67,6 +84,14 @@ fi
 #Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
 yb_executable_process=$(basename "$yb_executable_path")
+
+# Check for yb-controller relates core file, if so exit right away. As YBC core file not supported by this script due to the YBC pck not available publicly to download etc.
+if [[ "$yb_executable_process" == "yb-controller"* ]]; then
+    echo "The YB-Controller related core file's analysis is not supported."
+    echo "You can reach out to agangwar@yugabyte.com to see if there is any alternate way."
+    echo "Thanks for your understanding."
+    exit 1
+fi
 
 # Extract the OS architecture information. Print the OS architecture.
 
