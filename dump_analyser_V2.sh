@@ -84,7 +84,13 @@ fi
 
 #Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
-yb_executable_process=$(basename "$yb_executable_path")
+# Try to get the yb_executable_process using 'file' command
+yb_executable_process=$(file "$file_name" | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
+
+# If the above command fails, try using 'strings' command
+if [ -z "$yb_executable_process" ]; then
+    yb_executable_process=$(strings "$file_name" | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
+fi
 
 # Separator
 echo "--------------------------------------------------------"
@@ -224,7 +230,14 @@ else
 fi
 
 #To use the relative yb executable path in the lldb command, let's extrcat this. 
-yb_executable_relative_path=$(echo "$yb_executable_path" | sed -E 's|.*/yb-software/yugabyte-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+-[^/]+/||')
+# Define the yb_db_executable_dir based on yb_executable_process
+if [[ "$yb_executable_process" == "yb-tserver" || "$yb_executable_process" == "yb-master" ]]; then
+    yb_executable_relative_path="$yb_db_executable_dir/bin/$yb_executable_process"
+elif [[ "$yb_executable_process" == "postgres" ]]; then
+    yb_executable_relative_path=$yb_db_executable_dir/postgres/bin/$yb_executable_process
+else
+    error_exit "Error: Unrecognized yb_executable_process '$yb_executable_process'"
+fi
 
 # Use the lldb command with the new input string
 # Ask user to enetr available lldb command option for ease.
@@ -279,10 +292,10 @@ echo "--------------------------------------------------------"
 if [ "$redirect_output" == "y" ]; then
   output_file="${file_name}_$(echo "$lldb_command" | tr -s ' ' '_')_analysis.out"
   echo "Output will be saved to $output_file"
-  lldb --one-line-before-file "settings append target.exec-search-paths $(find $yb_db_executable_dir -type d | xargs echo)" -f "$yb_db_executable_dir/$yb_executable_relative_path" -c "$file_name" -o "$lldb_command" -o "quit"> "$output_file"
+  lldb --one-line-before-file "settings append target.exec-search-paths $(find $yb_db_executable_dir -type d | xargs echo)" -f "$yb_executable_relative_path" -c "$file_name" -o "$lldb_command" -o "quit"> "$output_file"
   echo "Analysis complete, the file '$output_file' has been saved."
 else
-  lldb --one-line-before-file "settings append target.exec-search-paths $(find $yb_db_executable_dir -type d | xargs echo)" -f "$yb_db_executable_dir/$yb_executable_relative_path" -c "$file_name" -o "$lldb_command"
+  lldb --one-line-before-file "settings append target.exec-search-paths $(find $yb_db_executable_dir -type d | xargs echo)" -f "$yb_executable_relative_path" -c "$file_name" -o "$lldb_command"
 fi
 fi
 echo "Exiting."
