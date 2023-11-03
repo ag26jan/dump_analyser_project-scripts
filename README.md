@@ -1,4 +1,4 @@
-# yb-tools
+# Core Dump Analyser for Lincoln (Yugabyte Support)
 Inventing some tools to ease life in YB. This is specifically for only support use, for public users it won't work.
 
 :mega: This is One click script to analyse the core dump files. Here are the quick steps to Run it from Lincoln (case file server).
