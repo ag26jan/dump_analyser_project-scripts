@@ -11,8 +11,8 @@ fi
 # Add a pretty welcome message
 echo "********************************************************************************************************************************"
 echo "*                                     Welcome to Core Dump Analyzer                                                            *"
-echo "*                         I am just a tiny tool to analyse the core file to help YB team                                       *"
-echo "*                           For any issue please use ##yb-support-tools Slack Channel                                          *"
+echo "*                    I am just a tiny tool to analyse the core file to ease the life of YB team                                *"
+echo "*                           For any issue please use #yb-support-tools Slack Channel                                           *"
 echo "*                         Feel free to contribute: https://github.com/yugabyte/yb-tools/                                       *"
 echo "********************************************************************************************************************************"
 echo
@@ -86,11 +86,12 @@ fi
 
 yb_executable_process=$(basename "$yb_executable_path")
 
+# Separator
+echo "--------------------------------------------------------"
+
 # Check for yb-controller relates core file, if so exit right away. As YBC core file not supported by this script due to the YBC pck not available publicly to download etc.
 if [[ "$yb_executable_process" == "yb-controller"* ]]; then
-    echo "The YB-Controller related core file's analysis is not supported."
-    echo "You can reach out to agangwar@yugabyte.com to see if there is any alternate way."
-    echo "Thanks for your understanding."
+    echo "The YB-Controller related core file's analysis is not supported. You can reach out to agangwar@yugabyte.com to see if there is any alternate way. Thanks for your understanding."
     exit 1
 fi
 
