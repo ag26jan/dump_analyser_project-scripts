@@ -14,6 +14,7 @@ echo "*                                     Welcome to Core Dump Analyzer       
 echo "*                    I am just a tiny tool to analyse the core file to ease the life of YB team                                *"
 echo "*                           For any issue please use #yb-support-tools Slack Channel                                           *"
 echo "*                         Feel free to contribute: https://github.com/ag26jan/dump_analyser_project-scripts                    *"
+echo "*                         Authered By: Ashok Gangwar (ag26jan[at]gmail[dot]com)                                                *"
 echo "********************************************************************************************************************************"
 echo
 
