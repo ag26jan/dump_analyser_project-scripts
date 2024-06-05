@@ -70,28 +70,37 @@ else
   error_exit "Error: The Core dump file is NOT an ELF core dump, please provide a valid core dump file. Make sure the file IS NOT compressed, if so please extract it and then try again!"
 fi
 
+# Define the chunk size and the number of chunks to read with dd
+chunk_size="500M"
+chunk_count=20
+
+#NOTE: The above chunk size and count can be increased always in you observe in some corner cases the command is not able to extract the details and we need to scan much larger chunk.
 
 # Extract the yugabyte binary version information from the core dump file
 
+# Use dd to read the core dump file in chunks and then process it with awk
 file_output=$(file "$file_name")
-yb_executable_path=$(strings "$file_name" | awk "/\/yugabyte\/yb-software\/.*\/bin\// {count++; if (count == 2) {print \$0; exit}}")
+yb_executable_path=$(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings | awk '/\/yugabyte\/yb-software\/.*\/bin\// {count++; if (count == 2) {print $0; exit}}')
 
 if [ -z "$yb_executable_path" ]; then
-    yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/[^ ]*/bin/[^ ]*' | head -n 1)
+    yb_executable_path=$(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings | grep -o '/home/yugabyte/[^ ]*/bin/[^ ]*' | head -n 1)
     if [ -z "$yb_executable_path" ]; then
-        yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/bin/[^ ]*' | head -n 1)
+        yb_executable_path=$(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings | grep -o '/home/yugabyte/bin/[^ ]*' | head -n 1)
     fi
 fi
-
-#Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
 # Try to get the yb_executable_process using 'file' command
 yb_executable_process=$(file "$file_name" | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
 
-# If the above command fails, try using 'strings' command
+# If the above command fails, use dd and strings to search for the process name in the core dump file
 if [ -z "$yb_executable_process" ]; then
-    yb_executable_process=$(strings "$file_name" | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
+    yb_executable_process=$(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
 fi
+
+# Output the results (for debugging purposes)
+echo "YB Executable Path: $yb_executable_path"
+echo "YB Executable Process: $yb_executable_process"
+
 
 # Separator
 echo "--------------------------------------------------------"
@@ -144,50 +153,46 @@ fi
 
 # Construct yb_db_tar_file based on os_architecture
 if [ "$os_architecture" = "x86_64" ]; then
-    yb_db_tar_file="yugabyte-$yb_db_numeric_version-linux-$os_architecture.tar.gz"
+    yb_db_tar_file="yugabyte-$yb_db_numeric_version-centos-$os_architecture.tar.gz"
 else
-    yb_db_tar_file="yugabyte-$yb_db_numeric_version-el8-$os_architecture.tar.gz"
+    yb_db_tar_file="yugabyte-$yb_db_numeric_version-almalinux8-$os_architecture.tar.gz"
 fi
-
-# Extract numeric Yugabyte DB version for URL
-yb_db_numeric_version_without_build=$(echo "$yb_db_numeric_version" | sed 's/-b[0-9]\+$//')
-
-# Separator
-echo "--------------------------------------------------------"
-
-# Construct yb_db_tar_url. 
-yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version_without_build/$yb_db_tar_file"
-
-echo "Downloadable Tar File URL: $yb_db_tar_url"
-
-
-# Separator
-echo "--------------------------------------------------------"
-
-# Download the yb db binary tar file
 
 download_file="$yb_db_tar_file"
 yb_db_install_dir="/home/yugabyte/yb-software"
 
 if [ -f "$yb_db_install_dir/$yb_db_tar_file" ]; then
-  echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
+    echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
 else
-  echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
+    echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
 
-  # Check if the file exists on the internet
-  response_code=$(curl -L --head -w "%{http_code}" "$yb_db_tar_url" -o /dev/null)
+    # Check if the file exists on the primary URL
+    response_code=$(curl -L --head -w "%{http_code}" "$yb_db_tar_url" -o /dev/null)
 
-  if [ "$response_code" -eq 200 ]; then
-    # File exists, proceed with the download
-    curl -L -# "$yb_db_tar_url" -o "$yb_db_install_dir/$yb_db_tar_file"
-    if [ $? -eq 0 ]; then
-      echo "Download of YB version file succeeded."
+    if [ "$response_code" -eq 200 ]; then
+        # File exists, proceed with the download from the primary URL
+        curl -L -# "$yb_db_tar_url" -o "$yb_db_install_dir/$yb_db_tar_file"
+        if [ $? -eq 0 ]; then
+            echo "Download of YB version file succeeded."
+        else
+            error_exit "Error: Download of YB version file from the primary URL failed."
+        fi
     else
-      error_exit "Error: Download of YB version file failed."
+        # File does not exist on the primary URL, try the internal S3 Release bucket
+        fallback_url="https://s3.us-west-2.amazonaws.com/releases.yugabyte.com/$yb_db_numeric_version/$yb_db_tar_file"
+        response_code=$(curl -L --head -w "%{http_code}" "$fallback_url" -o /dev/null)
+
+        if [ "$response_code" -eq 200 ]; then
+            curl -L -# "$fallback_url" -o "$yb_db_install_dir/$yb_db_tar_file"
+            if [ $? -eq 0 ]; then
+                echo "This YBDB version is not public. Downloading it from an internal S3 Release bucket. Download of YB version file succeeded."
+            else
+                error_exit "Error: Download of YB version file from the internal S3 Release bucket failed."
+            fi
+        else
+            error_exit "Error: The YB version file does not exist at either $yb_db_tar_url or $fallback_url."
+        fi
     fi
-  else
-    error_exit "Error: The YB version file does not exist at $yb_db_tar_url."
-  fi
 fi
 
 
