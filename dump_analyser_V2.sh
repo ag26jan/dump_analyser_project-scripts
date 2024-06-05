@@ -70,28 +70,37 @@ else
   error_exit "Error: The Core dump file is NOT an ELF core dump, please provide a valid core dump file. Make sure the file IS NOT compressed, if so please extract it and then try again!"
 fi
 
+# Define the chunk size and the number of chunks to read with dd
+chunk_size="500M"
+chunk_count=20
+
+#NOTE: The above chunk size and count can be increased always in you observe in some corner cases the command is not able to extract the details and we need to scan much larger chunk.
 
 # Extract the yugabyte binary version information from the core dump file
 
+# Use dd to read the core dump file in chunks and then process it with awk
 file_output=$(file "$file_name")
-yb_executable_path=$(strings "$file_name" | awk "/\/yugabyte\/yb-software\/.*\/bin\// {count++; if (count == 2) {print \$0; exit}}")
+yb_executable_path=$(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings | awk '/\/yugabyte\/yb-software\/.*\/bin\// {count++; if (count == 2) {print $0; exit}}')
 
 if [ -z "$yb_executable_path" ]; then
-    yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/[^ ]*/bin/[^ ]*' | head -n 1)
+    yb_executable_path=$(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings | grep -o '/home/yugabyte/[^ ]*/bin/[^ ]*' | head -n 1)
     if [ -z "$yb_executable_path" ]; then
-        yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/bin/[^ ]*' | head -n 1)
+        yb_executable_path=$(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings | grep -o '/home/yugabyte/bin/[^ ]*' | head -n 1)
     fi
 fi
-
-#Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
 # Try to get the yb_executable_process using 'file' command
 yb_executable_process=$(file "$file_name" | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
 
-# If the above command fails, try using 'strings' command
+# If the above command fails, use dd and strings to search for the process name in the core dump file
 if [ -z "$yb_executable_process" ]; then
-    yb_executable_process=$(strings "$file_name" | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
+    yb_executable_process=$(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
 fi
+
+# Output the results (for debugging purposes)
+echo "YB Executable Path: $yb_executable_path"
+echo "YB Executable Process: $yb_executable_process"
+
 
 # Separator
 echo "--------------------------------------------------------"
