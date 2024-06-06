@@ -24,6 +24,7 @@ echo
 function blinkdots() {
   local pid=$1
   local delay=0.5
+  printf "\n"  # Add a newline before starting the blinking dots
   while kill -0 $pid 2>/dev/null; do
     printf "."
     sleep $delay
@@ -65,33 +66,55 @@ echo "--------------------------------------------------------"
 
 file_type=$(file "$file_name")
 if echo "$file_type" | grep -q "core file"; then
-  echo "Great! The core dump file provided is a valid core dump, proceeding with analysis of core dump."
+  printf "Great! The core dump file provided is a valid core dump, proceeding with analysis of core dump.\nNOTE: If the core file is huge than this can take some time, please be patient and have sip of :beer:"
 else
   error_exit "Error: The Core dump file is NOT an ELF core dump, please provide a valid core dump file. Make sure the file IS NOT compressed, if so please extract it and then try again!"
 fi
 
+# Define the chunk size and the number of chunks to read with dd
+chunk_size="500M"
+chunk_count=20
 
-# Extract the yugabyte binary version information from the core dump file
+# NOTE: The above chunk size and count can be increased always in you observe in some corner cases the command is not able to extract the details and we need to scan much larger chunk.
+# Extract the yugabyte binary version information from the core dump file.
+# Use dd to read the core dump file in chunks and then process it with awk.
+# Background task to determine yb_executable_path and yb_executable_process.
+# Store the output of dd in a temporary file
 
-file_output=$(file "$file_name")
-yb_executable_path=$(strings "$file_name" | awk "/\/yugabyte\/yb-software\/.*\/bin\// {count++; if (count == 2) {print \$0; exit}}")
+tempfile=$(mktemp)
+(dd if="$file_name" bs=$chunk_size count=$chunk_count 2>/dev/null | strings > "$tempfile") &
+dd_pid=$!
+
+# Show blinking dots while the dd command runs
+blinkdots $dd_pid
+
+# Explicitly wait for the dd command to complete
+wait $dd_pid
+
+# Extract yb_executable_path and yb_executable_process from the tempfile
+yb_executable_path=$(awk '/\/yugabyte\/yb-software\/.*\/bin\// {count++; if (count == 2) {print $0; exit}}' "$tempfile")
 
 if [ -z "$yb_executable_path" ]; then
-    yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/[^ ]*/bin/[^ ]*' | head -n 1)
+    yb_executable_path=$(grep -o '/home/yugabyte/[^ ]*/bin/[^ ]*' "$tempfile" | head -n 1)
     if [ -z "$yb_executable_path" ]; then
-        yb_executable_path=$(strings "$file_name" | grep -o '/home/yugabyte/bin/[^ ]*' | head -n 1)
+        yb_executable_path=$(grep -o '/home/yugabyte/bin/[^ ]*' "$tempfile" | head -n 1)
     fi
 fi
-
-#Executable i.e yb-master, yb-tserver, postgres etc by which the core file was generated in the system
 
 # Try to get the yb_executable_process using 'file' command
 yb_executable_process=$(file "$file_name" | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
 
-# If the above command fails, try using 'strings' command
+# If the above command fails, use the tempfile to search for the process name in the core dump file
 if [ -z "$yb_executable_process" ]; then
-    yb_executable_process=$(strings "$file_name" | grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" | head -n 1)
+    yb_executable_process=$(grep -oE "yb-tserver|yb-master|postgres|yb-controller-server" "$tempfile" | head -n 1)
 fi
+
+# Output the results (for debugging purposes)
+echo "YB Executable Path: $yb_executable_path"
+echo "YB Executable Process: $yb_executable_process"
+
+# Clean up the temporary file
+rm "$tempfile"
 
 # Separator
 echo "--------------------------------------------------------"
@@ -104,31 +127,30 @@ fi
 
 # Extract the OS architecture information. Print the OS architecture.
 
-os_architecture="unsupported"
+os_architecture=""
 
-if file "$file_name" | grep -q "x86_64"; then
+if file "$file_name" | grep -q -E "x86-64|x86_64"; then
     os_architecture="x86_64"
 elif file "$file_name" | grep -q "aarch64"; then
     os_architecture="aarch64"
 else
     # Try to extract architecture from the path
-    os_architecture_from_path=$(echo "$yb_executable_path" | grep -oE '(x86_64|aarch64)')
-    
+    os_architecture_from_path=$(echo "$yb_executable_path" | grep -oE '(x86-64|x86_64|aarch64)')
+
     if [ -n "$os_architecture_from_path" ]; then
-        os_architecture="$os_architecture_from_path"
+        # Replace "x86-64" with "x86_64"
+        os_architecture="${os_architecture_from_path//-/_}"
+    else
+        os_architecture="unsupported"
     fi
 fi
 
 echo "OS architecture is: $os_architecture"
 
+# Extract numeric Yugabyte DB version for URL
 # Extract numeric Yugabyte DB version from the extracted version string above.
 
 yb_db_numeric_version=$(echo "$yb_executable_path" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-b[0-9]+')
-
-error_exit() {
-    echo "$1"
-    exit 1
-}
 
 #The full YB DB version by which the core file created. If yb_db_numeric_version is not provided, prompt the user.
 if [ -z "$yb_db_numeric_version" ]; then
@@ -142,54 +164,38 @@ if [ -z "$yb_db_numeric_version" ]; then
     done
 fi
 
-# Construct yb_db_tar_file based on os_architecture
-if [ "$os_architecture" = "x86_64" ]; then
-    yb_db_tar_file="yugabyte-$yb_db_numeric_version-linux-$os_architecture.tar.gz"
-else
-    yb_db_tar_file="yugabyte-$yb_db_numeric_version-el8-$os_architecture.tar.gz"
-fi
-
 # Extract numeric Yugabyte DB version for URL
 yb_db_numeric_version_without_build=$(echo "$yb_db_numeric_version" | sed 's/-b[0-9]\+$//')
 
-# Separator
-echo "--------------------------------------------------------"
-
-# Construct yb_db_tar_url. 
-yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version_without_build/$yb_db_tar_file"
-
-echo "Downloadable Tar File URL: $yb_db_tar_url"
-
-
-# Separator
-echo "--------------------------------------------------------"
-
-# Download the yb db binary tar file
+# Construct yb_db_tar_file based on os_architecture
+if [ "$os_architecture" = "x86_64" ]; then
+    yb_db_tar_file="yugabyte-$yb_db_numeric_version-centos-$os_architecture.tar.gz"
+else
+    yb_db_tar_file="yugabyte-$yb_db_numeric_version-almalinux8-$os_architecture.tar.gz"
+fi
 
 download_file="$yb_db_tar_file"
 yb_db_install_dir="/home/yugabyte/yb-software"
 
 if [ -f "$yb_db_install_dir/$yb_db_tar_file" ]; then
-  echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
+    echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
 else
-  echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
-
-  # Check if the file exists on the internet
-  response_code=$(curl -L --head -w "%{http_code}" "$yb_db_tar_url" -o /dev/null)
-
-  if [ "$response_code" -eq 200 ]; then
-    # File exists, proceed with the download
-    curl -L -# "$yb_db_tar_url" -o "$yb_db_install_dir/$yb_db_tar_file"
-    if [ $? -eq 0 ]; then
-      echo "Download of YB version file succeeded."
+    echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
+    # We will directly fetch/download the file from the internal S3 Release bucket.
+    # The Bucket is here: https://us-west-2.console.aws.amazon.com/s3/buckets/releases.yugabyte.com?region=us-west-2&bucketType=general&tab=objects
+    yb_db_tar_s3_url="https://s3.us-west-2.amazonaws.com/releases.yugabyte.com/$yb_db_numeric_version/$yb_db_tar_file"
+    response_code=$(curl -L --head -w "%{http_code}" "$yb_db_tar_s3_url" -o /dev/null)
+    if [ "$response_code" -eq 200 ]; then
+        curl -L -# "$yb_db_tar_s3_url" -o "$yb_db_install_dir/$yb_db_tar_file"
+        if [ $? -eq 0 ]; then
+            echo "Downloading YBDB binary from the internal S3 Release bucket. Download of YB version file succeeded."
+        else
+            error_exit "Error: Download of YB version file from the internal S3 Release bucket failed."
+        fi
     else
-      error_exit "Error: Download of YB version file failed."
+        error_exit "Error: The YB version file does not exist at $yb_db_tar_s3_url."
     fi
-  else
-    error_exit "Error: The YB version file does not exist at $yb_db_tar_url."
-  fi
 fi
-
 
 # Separator
 echo "--------------------------------------------------------"
@@ -230,12 +236,13 @@ else
   error_exit "Error: $post_install not found."
 fi
 
-#To use the relative yb executable path in the lldb command, let's extrcat this. 
+#To use the relative yb executable path in the lldb command, let's extrcat this.
 # Define the yb_db_executable_dir based on yb_executable_process
 if [[ "$yb_executable_process" == "yb-tserver" || "$yb_executable_process" == "yb-master" ]]; then
     yb_executable_relative_path="$yb_db_executable_dir/bin/$yb_executable_process"
 elif [[ "$yb_executable_process" == "postgres" ]]; then
     yb_executable_relative_path=$yb_db_executable_dir/postgres/bin/$yb_executable_process
+    echo "YB Executable Process: $yb_executable_relative_path" # Because if terms of postgres process the path will be equivalent to relative path. Sorry I know it's dirty code. I am helpless.
 else
     error_exit "Error: Unrecognized yb_executable_process '$yb_executable_process'"
 fi
