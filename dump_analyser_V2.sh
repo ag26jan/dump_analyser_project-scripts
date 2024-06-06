@@ -144,46 +144,50 @@ fi
 
 # Construct yb_db_tar_file based on os_architecture
 if [ "$os_architecture" = "x86_64" ]; then
-    yb_db_tar_file="yugabyte-$yb_db_numeric_version-centos-$os_architecture.tar.gz"
+    yb_db_tar_file="yugabyte-$yb_db_numeric_version-linux-$os_architecture.tar.gz"
 else
-    yb_db_tar_file="yugabyte-$yb_db_numeric_version-almalinux8-$os_architecture.tar.gz"
+    yb_db_tar_file="yugabyte-$yb_db_numeric_version-el8-$os_architecture.tar.gz"
 fi
+
+# Extract numeric Yugabyte DB version for URL
+yb_db_numeric_version_without_build=$(echo "$yb_db_numeric_version" | sed 's/-b[0-9]\+$//')
+
+# Separator
+echo "--------------------------------------------------------"
+
+# Construct yb_db_tar_url. 
+yb_db_tar_url="https://downloads.yugabyte.com/releases/$yb_db_numeric_version_without_build/$yb_db_tar_file"
+
+echo "Downloadable Tar File URL: $yb_db_tar_url"
+
+
+# Separator
+echo "--------------------------------------------------------"
+
+# Download the yb db binary tar file
 
 download_file="$yb_db_tar_file"
 yb_db_install_dir="/home/yugabyte/yb-software"
 
 if [ -f "$yb_db_install_dir/$yb_db_tar_file" ]; then
-    echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
+  echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
 else
-    echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
+  echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
 
-    # Check if the file exists on the primary URL
-    response_code=$(curl -L --head -w "%{http_code}" "$yb_db_tar_url" -o /dev/null)
+  # Check if the file exists on the internet
+  response_code=$(curl -L --head -w "%{http_code}" "$yb_db_tar_url" -o /dev/null)
 
-    if [ "$response_code" -eq 200 ]; then
-        # File exists, proceed with the download from the primary URL
-        curl -L -# "$yb_db_tar_url" -o "$yb_db_install_dir/$yb_db_tar_file"
-        if [ $? -eq 0 ]; then
-            echo "Download of YB version file succeeded."
-        else
-            error_exit "Error: Download of YB version file from the primary URL failed."
-        fi
+  if [ "$response_code" -eq 200 ]; then
+    # File exists, proceed with the download
+    curl -L -# "$yb_db_tar_url" -o "$yb_db_install_dir/$yb_db_tar_file"
+    if [ $? -eq 0 ]; then
+      echo "Download of YB version file succeeded."
     else
-        # File does not exist on the primary URL, try the internal S3 Release bucket
-        fallback_url="https://s3.us-west-2.amazonaws.com/releases.yugabyte.com/$yb_db_numeric_version/$yb_db_tar_file"
-        response_code=$(curl -L --head -w "%{http_code}" "$fallback_url" -o /dev/null)
-
-        if [ "$response_code" -eq 200 ]; then
-            curl -L -# "$fallback_url" -o "$yb_db_install_dir/$yb_db_tar_file"
-            if [ $? -eq 0 ]; then
-                echo "This YBDB version is not public. Downloading it from an internal S3 Release bucket. Download of YB version file succeeded."
-            else
-                error_exit "Error: Download of YB version file from the internal S3 Release bucket failed."
-            fi
-        else
-            error_exit "Error: The YB version file does not exist at either $yb_db_tar_url or $fallback_url."
-        fi
+      error_exit "Error: Download of YB version file failed."
     fi
+  else
+    error_exit "Error: The YB version file does not exist at $yb_db_tar_url."
+  fi
 fi
 
 
