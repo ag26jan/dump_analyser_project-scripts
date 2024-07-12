@@ -12,9 +12,9 @@ fi
 echo "********************************************************************************************************************************"
 echo "*                                     Welcome to Core Dump Analyzer                                                            *"
 echo "*                    I am just a tiny tool to analyse the core file to ease the life of YB team                                *"
-echo "*                           For any issue please use #yb-support-tools Slack Channel                                           *"
-echo "*                         Feel free to contribute: https://github.com/ag26jan/dump_analyser_project-scripts                    *"
-echo "*                         Authered By: Ashok Gangwar (ag26jan[at]gmail[dot]com)                                                *"
+echo "*                     ⚙️     For any issue please use #yb-support-tools Slack Channel                                          *"
+echo "*                     ♨️     Feel free to contribute: https://github.com/ag26jan/dump_analyser_project-scripts                 *"
+echo "*                     ✍️    Authered By: Ashok Gangwar (ag26jan[at]gmail[dot]com)                                              *"
 echo "********************************************************************************************************************************"
 echo
 
@@ -113,8 +113,8 @@ fi
 echo "--------------------------------------------------------"
 
 # Output the results (for debugging purposes)
-echo "YB Executable Path: $yb_executable_path"
-echo "YB Executable Process: $yb_executable_process"
+echo "🔸 YB Executable Path: $yb_executable_path"
+echo "🔸 YB Executable Process: $yb_executable_process"
 
 # Clean up the temporary file
 rm "$tempfile"
@@ -148,7 +148,7 @@ else
     fi
 fi
 
-echo "OS architecture is: $os_architecture"
+echo "🔸 OS architecture is: $os_architecture"
 
 # Extract numeric Yugabyte DB version for URL
 # Extract numeric Yugabyte DB version from the extracted version string above.
@@ -181,7 +181,7 @@ download_file="$yb_db_tar_file"
 yb_db_install_dir="/home/yugabyte/yb-software"
 
 if [ -f "$yb_db_install_dir/$yb_db_tar_file" ]; then
-    echo "The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
+    echo "🔸 The file $yb_db_tar_file already exists in $yb_db_install_dir. Skipping the download step."
 else
     echo "Downloading the YB version file to $yb_db_install_dir/$yb_db_tar_file"
     # We will directly fetch/download the file from the internal S3 Release bucket.
@@ -207,7 +207,7 @@ echo "--------------------------------------------------------"
 yb_db_executable_dir="$yb_db_install_dir/yugabyte-$yb_db_numeric_version_without_build"
 
 if [ -d "$yb_db_executable_dir" ]; then
-  echo "$yb_db_executable_dir already exists, not extracting again."
+  echo "🔸 $yb_db_executable_dir already exists, not extracting again."
 else
   echo "Extracting $yb_db_tar_file in $yb_db_install_dir"
   tar -xzf "$yb_db_install_dir/$yb_db_tar_file" -C $yb_db_install_dir &>/dev/null &
@@ -227,7 +227,7 @@ echo "--------------------------------------------------------"
 post_install="$yb_db_executable_dir/bin/post_install.sh"
 
 if [ -f "$post_install" ]; then
-  echo "Executing post_install script to setup the binary as per core dump. Please bear with me!"
+  echo "🧬 Executing post_install script to setup the binary as per core dump. Please bear with me!"
   $post_install &>/dev/null &
   blinkdots $!
   if [ $? -eq 0 ]; then
@@ -257,7 +257,7 @@ fi
 # Separator
 echo "--------------------------------------------------------"
 
-echo "Select an option for lldb command and press ENTER:"
+echo "👇 Select an option for lldb command and press ENTER:"
 echo "1. bt"
 echo "2. thread backtrace all"
 echo "3. Other lldb command"
@@ -266,7 +266,7 @@ read -r option
 
 while [[ ! "$option" =~ ^(1|2|3|4)$ ]]; do
   echo "Error: Invalid option selected. Please select either 1, 2, 3 or 4."
-  echo "Select an option for lldb command and press ENTER:"
+  echo "👇 Select an option for lldb command and press ENTER:"
   echo "1. bt"
   echo "2. thread backtrace all"
   echo "3. Other lldb command"
@@ -288,11 +288,11 @@ elif [ "$option" == "3" ]; then
 fi
 
 if [ "$option" != "4" ]; then
-  echo "Do you want to redirect the output to a file? (y/n)"
+  echo "🗒️ Do you want to redirect the output to a file? (y/n)"
   read -r redirect_output
   while [[ ! "$redirect_output" =~ ^(y|n)$ ]]; do
-    echo "Error: Invalid option selected. Please enter either y or n."
-    echo "Do you want to redirect the output to a file? (y/n)"
+    echo "🚫 Error: Invalid option selected. Please enter either y or n."
+    echo "🗒️ Do you want to redirect the output to a file? (y/n)"
     read -r redirect_output
   done
 
