@@ -1,0 +1,24 @@
+name: Deploy Repo's Script's to Lincoln Server
+
+on:
+  push:
+    branches:
+      - beautification
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Sync files & repo to Lincoln server
+        uses: burnett01/rsync-deployments@5.1
+        with:
+          switches: -avzr --delete
+          path: ./
+          remote_path: /home/support/agangwar/bin/     # Changing the dir from /home/support/bin/ to my dir for testing otherwise this will override
+          remote_host: ${{ secrets.SERVER_HOST }}
+          remote_user: ${{ secrets.SERVER_USER }}
+          remote_key: ${{ secrets.SERVER_SSH_KEY }}
